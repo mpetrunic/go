@@ -887,8 +887,9 @@ func loadPackageData(ctx context.Context, path, parentPath, parentDir, parentRoo
 			modroot := modload.PackageModRoot(ctx, r.path)
 			if modroot == "" && str.HasPathPrefix(r.dir, cfg.GOROOTsrc) {
 				modroot = cfg.GOROOTsrc
-				if str.HasPathPrefix(r.dir, cfg.GOROOTsrc+string(filepath.Separator)+"cmd") {
-					modroot += string(filepath.Separator) + "cmd"
+				gorootSrcCmd := filepath.Join(cfg.GOROOTsrc, "cmd")
+				if str.HasPathPrefix(r.dir, gorootSrcCmd) {
+					modroot = gorootSrcCmd
 				}
 			}
 			if modroot != "" {
@@ -1784,7 +1785,7 @@ func (p *Package) load(ctx context.Context, opts PackageOpts, path string, stk *
 			return
 		}
 		elem := p.DefaultExecName() + cfg.ExeSuffix
-		full := cfg.BuildContext.GOOS + "_" + cfg.BuildContext.GOARCH + string(filepath.Separator) + elem
+		full := filepath.Join(cfg.BuildContext.GOOS+"_"+cfg.BuildContext.GOARCH, elem)
 		if cfg.BuildContext.GOOS != runtime.GOOS || cfg.BuildContext.GOARCH != runtime.GOARCH {
 			// Install cross-compiled binaries to subdirectories of bin.
 			elem = full
@@ -2086,7 +2087,7 @@ func resolveEmbed(pkgdir string, patterns []string) (files []string, pmap map[st
 		}
 
 		// Glob to find matches.
-		match, err := fsys.Glob(str.QuoteGlob(pkgdir) + string(filepath.Separator) + filepath.FromSlash(glob))
+		match, err := fsys.Glob(str.QuoteGlob(str.WithFilePathSeparator(pkgdir)) + filepath.FromSlash(glob))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -2662,19 +2663,19 @@ func (p *Package) InternalXGoFiles() []string {
 	return p.mkAbs(p.XTestGoFiles)
 }
 
-// InternalGoFiles returns the list of all Go files possibly relevant for the package,
+// InternalAllGoFiles returns the list of all Go files possibly relevant for the package,
 // using absolute paths. "Possibly relevant" means that files are not excluded
 // due to build tags, but files with names beginning with . or _ are still excluded.
 func (p *Package) InternalAllGoFiles() []string {
 	return p.mkAbs(str.StringList(p.IgnoredGoFiles, p.GoFiles, p.CgoFiles, p.TestGoFiles, p.XTestGoFiles))
 }
 
-// usesSwig reports whether the package needs to run SWIG.
+// UsesSwig reports whether the package needs to run SWIG.
 func (p *Package) UsesSwig() bool {
 	return len(p.SwigFiles) > 0 || len(p.SwigCXXFiles) > 0
 }
 
-// usesCgo reports whether the package needs to run cgo
+// UsesCgo reports whether the package needs to run cgo
 func (p *Package) UsesCgo() bool {
 	return len(p.CgoFiles) > 0
 }
@@ -3433,7 +3434,7 @@ func SelectCoverPackages(roots []*Package, match []func(*Package) bool, op strin
 	return covered
 }
 
-// declareCoverVars attaches the required cover variables names
+// DeclareCoverVars attaches the required cover variables names
 // to the files, to be used when annotating the files. This
 // function only called when using legacy coverage test/build
 // (e.g. GOEXPERIMENT=coverageredesign is off).
